@@ -11,16 +11,33 @@ In order to use the I2C interface, it is a prerequisite to operate with SBC such
 
 
 
-(1) build
+(1) prepare packages
 
 ```
 apt install g++
+```
+
+
+
+(2) build
+
+for Raspberry Pi
+
+```
+g++ -Ofast -std=c++11 MachXO_Writer.cpp -DI2CBUS=1 -o machxo_writer.o
+```
+
+
+
+for NanoPi NEO/NEO2
+
+```
 g++ -Ofast -std=c++11 MachXO_Writer.cpp -o machxo_writer.o
 ```
 
 
 
-(2) run
+(3) run
 
 ```
  ./machxo_writer.o <Hex File>
@@ -117,5 +134,8 @@ DONE.
 
 
 
+# References
 
+- https://github.com/gsteiert-lscc/MachXO_Library
+- https://www.latticesemi.com/-/media/LatticeSemi/Documents/ApplicationNotes/MO/MachXO2ProgrammingandConfigurationUsageGuide.ashx?document_id=39085
 

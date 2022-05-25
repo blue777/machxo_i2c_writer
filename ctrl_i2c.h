@@ -1,6 +1,12 @@
 #ifndef __CTRL_I2C_H_INCLUDED__
 #define __CTRL_I2C_H_INCLUDED__
 
+
+#ifndef I2CBUS
+#define I2CBUS	0
+#endif
+
+
 #include <stdint.h>
 #include <cstdint>
 #include <initializer_list>
@@ -31,7 +37,7 @@ class ctrl_i2c : public ctrl_io_if
 public:
 	ctrl_i2c(uint8_t addr ) : m_addr(addr)
 	{
-		m_handle = Mcp2221_OpenByIndex(MCP2221_USB_VID, MCP2221_USB_PID, 0);
+		m_handle = Mcp2221_OpenByIndex(MCP2221_USB_VID, MCP2221_USB_PID, I2CBUS );
 		Mcp2221_SetSpeed(m_handle, 400000);
 	}
 
@@ -80,11 +86,13 @@ private:
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
 
+#define	TOSTR2(s)	#s
+#define	TOSTR(s)	TOSTR2(s)
 
 class ctrl_i2c : public ctrl_io_if
 {
 public:
-    ctrl_i2c(uint8_t addr, const char * dev = "/dev/i2c-0" )
+    ctrl_i2c(uint8_t addr, const char * dev = "/dev/i2c-" TOSTR(I2CBUS) )
     {
         int     ret;
 

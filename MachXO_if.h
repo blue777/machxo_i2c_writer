@@ -4,12 +4,6 @@
 #include <vector>
 #include <fstream>
 
-// https://github.com/gsteiert-lscc/MachXO_Library
-
-// MachXO2ProgrammingandConfigurationUsageGuideJapaneseLanguageVersion.pdf
-//  P51, 表 14-22. MachXO2 sysCONFIG のプロ グ ラ ミ ング コマン ド
-
-
 
 class MachXO
 {
