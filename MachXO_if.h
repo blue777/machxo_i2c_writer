@@ -16,6 +16,18 @@ public:
 		MACHXO_ERASE_UFM = (1 << 19),
 	};
 
+	// Feature bit pos
+	enum {
+		FB_MASTER_SPI_PERSISTENCE		= 1 << 3,
+		FB_I2C_PORT_NON_PERSISTENCE		= 1 << 2,
+		FB_SLAVE_SPI_NON_PERSISTENCE	= 1 << 1,
+		FB_JTAG_PORT_NON_PERSISTENCE	= 1 << 0,
+		FB_DONE_PERSISTENCE				= 1 << 15,
+		FB_INITN_NON_PERSISTENCE		= 1 << 14,
+		FB_PROGRAMN_NON_PERSISTENCE		= 1 << 13,
+	};
+
+
 public:
 	MachXO( uint8_t i2c_addr = 0x40 )
 		: m_io( i2c_addr )
@@ -26,8 +38,7 @@ public:
 	{
 		uint32_t    read_data = 0;
 
-		m_io.write({ 0xE0, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0xE0, 0x00, 0x00, 0x00 }, (uint8_t*)&read_data, sizeof(read_data) );
 
 		return  read_data;
 	};
@@ -36,8 +47,7 @@ public:
 	{
 		uint32_t    read_data = 0;
 
-		m_io.write({ 0xC0, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0xC0, 0x00, 0x00, 0x00 }, (uint8_t*)&read_data, sizeof(read_data));
 
 		return  read_data;
 	};
@@ -46,8 +56,7 @@ public:
 	{
 		uint32_t    read_data = 0;
 
-		m_io.write({ 0x3C, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0x3C, 0x00, 0x00, 0x00 },(uint8_t*)&read_data, sizeof(read_data));
 
 		return  read_data;
 	};
@@ -57,26 +66,39 @@ public:
 	{
 		uint16_t    read_data = 0;
 
-		m_io.write({ 0xFB, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0xFB, 0x00, 0x00, 0x00 },(uint8_t*)&read_data, sizeof(read_data));
 		return  read_data;
 	}; 
+
+	bool writeFeatureBits( uint16_t value )
+	{
+		uint16_t    read_data = 0;
+		return	6 == m_io.write({ 0xF8, 0x00, 0x00, 0x00, (uint8_t)value, (uint8_t)(value >> 8) });
+	};
 
 	uint64_t readFeatureRow()
 	{
 		uint64_t    read_data = 0;
 
-		m_io.write({ 0xE7, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0xE7, 0x00, 0x00, 0x00 },(uint8_t*)&read_data, sizeof(read_data));
 		return  read_data;
+	}
+
+	bool	writeFeatureRow(uint64_t value = 0x0000000000100000 )
+	{
+		uint8_t	data[12] = { 0 };
+		
+		data[0] = 0xE4;
+		*((uint64_t*)&data[4]) = value;
+
+		return 12 == m_io.write(data, sizeof(data));
 	}
 
 	uint8_t readOTPFuses()
 	{
 		uint8_t    read_data = 0;
 
-		m_io.write({ 0xFA, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0xFA, 0x00, 0x00, 0x00 },(uint8_t*)&read_data, sizeof(read_data));
 		return  read_data;
 	}
 
@@ -84,8 +106,7 @@ public:
 	{
 		std::vector<uint8_t>    read_data(16, 0);
 
-		m_io.write({ 0x73, 0x00, 0x00, 0x00 });
-		m_io.read(read_data.data(), read_data.size());
+		m_io.write_and_read({ 0x73, 0x00, 0x00, 0x00 },read_data.data(), read_data.size());
 		return  read_data;
 	}
 
@@ -93,8 +114,7 @@ public:
 	{
 		std::vector<uint8_t>    read_data(16, 0);
 
-		m_io.write({ 0xCA, 0x00, 0x00, 0x00 });
-		m_io.read(read_data.data(), read_data.size());
+		m_io.write_and_read({ 0xCA, 0x00, 0x00, 0x00 }, read_data.data(), read_data.size());
 		return  read_data;
 	}
 
@@ -115,14 +135,13 @@ public:
 
 	bool    enableConfigOffline()
 	{
-		return 3 == m_io.write({ 0xC6, 0x08, 0x00, 0x00 });
+		return 3 == m_io.write({ 0xC6, 0x08, 0x00 });
 	}
 
 	bool    isBusy()
 	{
 		uint8_t read_data   = 0;
-		m_io.write({ 0xF0, 0x00, 0x00, 0x00 });
-		m_io.read((uint8_t*)&read_data, sizeof(read_data));
+		m_io.write_and_read({ 0xF0, 0x00, 0x00, 0x00 },(uint8_t*)&read_data, sizeof(read_data));
 		return ((read_data & 0x80) ? 1 : 0);
 	}
 
@@ -235,6 +254,7 @@ public:
 		printf("Loading HEX %d bytes left over\n", byteCnt);
 		return (byteCnt);
 	}
+
 
 protected:
 	ctrl_i2c   m_io;

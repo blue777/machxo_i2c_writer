@@ -10,24 +10,31 @@ int main( int argc, char * argv[] )
 {
 	MachXO  iMachXO;
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-	uint32_t	DeviceID = iMachXO.readDeviceID();
+	uint32_t	DeviceID	= iMachXO.readDeviceID();
 
 	printf("\n");
 	printf("-------------------------------------\n");
 	printf("     MachXO configuration writer     \n");
 	printf("-------------------------------------\n");
 	printf("\n");
-	printf("DeviceID    = 0x%08x\n", iMachXO.readDeviceID());
+	printf("DeviceID    = 0x%08x\n", DeviceID );
 	printf("UserCode    = 0x%08x\n", iMachXO.readUserCode());
 	printf("Status      = 0x%08x\n", iMachXO.readStatus());
-	printf("FeatureBits =     0x%04x\n", iMachXO.readFeatureBits());
 	printf("\n");
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 	if (2 <= argc)
 	{
 		std::ifstream   ifs(argv[1]);
+
+		if (DeviceID == 0)
+		{
+			printf("[ERROR] Illigal Device ID 0x%08x\n", DeviceID);
+			return	-1;
+		}
 
 		if (ifs.fail())
 		{
@@ -35,22 +42,63 @@ int main( int argc, char * argv[] )
 			return	-1;
 		}
 
+		printf("\n");
+		printf("Entering Offline Configuration\n");
+		iMachXO.enableConfigOffline();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		uint32_t	DeviceID = iMachXO.readDeviceID();
+		uint64_t	feature_row = iMachXO.readFeatureRow();
+
+		printf("\n");
+		printf("----- Current device info -----\n");
+		printf("DeviceID    = 0x%08x\n", DeviceID);
+		printf("UserCode    = 0x%08x\n", iMachXO.readUserCode());
+		printf("Status      = 0x%08x\n", iMachXO.readStatus());
+		printf("FeatureBits =     0x%04x\n", iMachXO.readFeatureBits());
+		printf("FeatureRow  =   %08x %08x\n", (uint32_t)(feature_row >> 32), (uint32_t)(feature_row));
+		printf("\n");
+
 		if (DeviceID == 0)
 		{
 			printf("[ERROR] Illigal Device ID 0x%08x\n", DeviceID );
+			iMachXO.refresh();
 			return	-1;
 		}
 
-		printf("Entering Offline Configuration\n");
-		iMachXO.enableConfigOffline();
 		printf("Erasing Configuration and UFM\n");
-		iMachXO.erase(MachXO::MACHXO_ERASE_CONFIG_FLASH | MachXO::MACHXO_ERASE_UFM);
+		iMachXO.erase(MachXO::MACHXO_ERASE_CONFIG_FLASH | MachXO::MACHXO_ERASE_UFM | MachXO::MACHXO_ERASE_FEATURE_ROW);
+		iMachXO.erase(MachXO::MACHXO_ERASE_CONFIG_FLASH | MachXO::MACHXO_ERASE_UFM );
 		printf("Waiting for erase to complete\n");
 		iMachXO.waitBusy();
+
 		printf("Loading HEX\n");
 		iMachXO.loadHex(ifs);
+
+		printf("Writing Feature Row\n");
+		iMachXO.writeFeatureRow();
+		iMachXO.waitBusy();
+
+		printf("Writing Feature Bit\n");
+		iMachXO.writeFeatureBits(MachXO::FB_SLAVE_SPI_NON_PERSISTENCE | MachXO::FB_PROGRAMN_NON_PERSISTENCE);
+		iMachXO.waitBusy();
+
 		printf("Programming DONE status bit\n");
 		iMachXO.programDone();
+		iMachXO.waitBusy();
+
+		DeviceID = iMachXO.readDeviceID();
+		feature_row = iMachXO.readFeatureRow();
+
+		printf("\n");
+		printf("----- Configurated device info -----\n");
+		printf("DeviceID    = 0x%08x\n", DeviceID);
+		printf("UserCode    = 0x%08x\n", iMachXO.readUserCode());
+		printf("Status      = 0x%08x\n", iMachXO.readStatus());
+		printf("FeatureBits =     0x%04x\n", iMachXO.readFeatureBits());
+		printf("FeatureRow  =   %08x %08x\n", (uint32_t)(feature_row >> 32), (uint32_t)(feature_row));
+		printf("\n");
+
 		printf("Refreshing image\n");
 		iMachXO.refresh();
 
